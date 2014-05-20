@@ -39,31 +39,22 @@
     <releaseNotes></releaseNotes>
 
     <dependencies>
-      <dependency id="SharpDX" version="$version$"/>
-      <dependency id="SharpDX.Direct2D1" version="$version$"/>
-      <dependency id="SharpDX.Direct3D11" version="$version$"/>
-      <dependency id="SharpDX.DXGI" version="$version$"/>
-      <dependency id="SharpDX.Toolkit" version="$version$"/>
+      <group>
+        <dependency id="SharpDX" version="$version$"/>
+        <dependency id="SharpDX.Direct3D11" version="$version$"/>
+        <dependency id="SharpDX.DXGI" version="$version$"/>
+        <dependency id="SharpDX.Toolkit" version="$version$"/>
+      </group>
+      <group targetFramework="net20, net40, wp81, win8">
+        <dependency id="SharpDX.Direct2D1" version="$version$"/>
+      </group>
     </dependencies>
   </metadata>
 
   <files>
-    <file src="..\..\..\Bin\DirectX11-Signed-net20\SharpDX.Toolkit.Graphics.dll" target="lib\net20" />
-    <file src="..\..\..\Bin\DirectX11-Signed-net20\SharpDX.Toolkit.Graphics.pdb" target="lib\net20" />
-    <file src="..\..\..\Bin\DirectX11-Signed-net20\SharpDX.Toolkit.Graphics.xml" target="lib\net20" />
-
-    <file src="..\..\..\Bin\DirectX11-Signed-net40\SharpDX.Toolkit.Graphics.dll" target="lib\net40" />
-    <file src="..\..\..\Bin\DirectX11-Signed-net40\SharpDX.Toolkit.Graphics.pdb" target="lib\net40" />
-    <file src="..\..\..\Bin\DirectX11-Signed-net40\SharpDX.Toolkit.Graphics.xml" target="lib\net40" />
-
-    <!--<file src="..\..\Bin\DirectX11-Signed-net40\SharpDX.dll" target="lib\net40" />-->
-    <!--<file src="..\..\Bin\DirectX11-Signed-net40\SharpDX.xml" target="lib\net40" />-->
-
-    <file src="..\..\..\Bin\DirectX11_1-Signed-winrt\SharpDX.Toolkit.Graphics.dll" target="lib\win8" />
-    <file src="..\..\..\Bin\DirectX11_1-Signed-winrt\SharpDX.Toolkit.Graphics.pdb" target="lib\win8" />
-    <file src="..\..\..\Bin\DirectX11_1-Signed-winrt\SharpDX.Toolkit.Graphics.xml" target="lib\win8" />
-
-    <file src="**\*.cs" target="src" />
+    <file src="..\..\dummy.txt" target="lib" />
+    <file src="..\..\Install.ps1" target="tools\Install.ps1" />
+    <file src="..\..\UnInstall.ps1" target="tools\UnInstall.ps1" />
   </files>
 
 </package>

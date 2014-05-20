@@ -20,6 +20,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using Mono.Options;
 using SharpGen.Logging;
@@ -147,8 +148,7 @@ namespace SharpGen
             _isAssemblyNew = (File.GetLastWriteTime(_thisAssemblyPath) != File.GetLastWriteTime(_assemblyCheckFile));
             _generatedPath = Path.GetDirectoryName(_configRootPath);
 
-            if (_isAssemblyNew)
-                Logger.Message("Assembly [{0}] changed. All files will be generated", _thisAssemblyPath);
+
 
             Logger.Message("Loading config files...");
 
@@ -156,6 +156,9 @@ namespace SharpGen
             // Load configuration
             Macros.Add("WIN8METRO");
             Macros.Add("W8CORE");
+#endif
+#if WP81
+            Macros.Add("WP81");
 #endif
 #if WP8
             // Load configuration
@@ -183,8 +186,18 @@ namespace SharpGen
 
             _allConfigCheck = Config.Id + "-CodeGen.check";
 
+            var isConfigFileChanged = !File.Exists(_allConfigCheck) || latestConfigTime > File.GetLastWriteTime(_allConfigCheck);
+            if(_isAssemblyNew)
+            {
+                Logger.Message("Assembly [{0}] changed. All files will be generated", _thisAssemblyPath);
+            }
+            else if(isConfigFileChanged)
+            {
+                Logger.Message("Config files [{0}] changed", string.Join(",", Config.ConfigFilesLoaded.Select(file => Path.GetFileName(file.AbsoluteFilePath))));
+            }
+
             // Return true if a config file changed or the assembly changed
-            return !File.Exists(_allConfigCheck) || latestConfigTime > File.GetLastWriteTime(_allConfigCheck) || _isAssemblyNew;
+            return isConfigFileChanged || _isAssemblyNew;
         }
 
         /// <summary>

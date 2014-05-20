@@ -18,7 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 using System;
-using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using SharpDX.Serialization;
@@ -28,10 +27,6 @@ namespace SharpDX
     /// <summary>
     /// Represents a 32-bit color (4 bytes) in the form of RGBA (in byte order: R, G, B, A).
     /// </summary>
-#if !W8CORE
-    [Serializable]
-    [TypeConverter(typeof(SharpDX.Design.ColorConverter))]
-#endif
     [StructLayout(LayoutKind.Sequential, Size = 4)]
     [DynamicSerializer("TKC1")]
     public partial struct Color : IEquatable<Color>, IFormattable, IDataSerializable
@@ -104,7 +99,7 @@ namespace SharpDX
             B = blue;
             A = 255;
         }
-		
+        
         /// <summary>
         /// Initializes a new instance of the <see cref="SharpDX.Color"/> struct.  Passed values are clamped within byte range.
         /// </summary>
@@ -118,7 +113,7 @@ namespace SharpDX
             B = ToByte(blue);
             A = ToByte(alpha);
         }
-		
+        
         /// <summary>
         /// Initializes a new instance of the <see cref="SharpDX.Color"/> struct.  Alpha is set to 255.  Passed values are clamped within byte range.
         /// </summary>
@@ -629,6 +624,32 @@ namespace SharpDX
             blue = (blue < min.B) ? min.B : blue;
 
             result = new Color(red, green, blue, alpha);
+        }
+
+        /// <summary>
+        /// Computes the premultiplied value of the provided color.
+        /// </summary>
+        /// <param name="value">The non-premultiplied value.</param>
+        /// <param name="result">The premultiplied result.</param>
+        public static void Premultiply(ref Color value, out Color result)
+        {
+            var a = value.A / (255f * 255f);
+            result.A = value.A;
+            result.R = ToByte(value.R * a);
+            result.G = ToByte(value.G * a);
+            result.B = ToByte(value.B * a);
+        }
+
+        /// <summary>
+        /// Computes the premultiplied value of the provided color.
+        /// </summary>
+        /// <param name="value">The non-premultiplied value.</param>
+        /// <returns>The premultiplied result.</returns>
+        public static Color Premultiply(Color value)
+        {
+            Color result;
+            Premultiply(ref value, out result);
+            return result;
         }
 
         /// <summary>

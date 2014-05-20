@@ -28,9 +28,6 @@ namespace SharpDX
     /// <summary>
     /// Descriptor used to provide detailed message for a particular <see cref="Result"/>.
     /// </summary>
-#if !W8CORE
-    [Serializable]
-#endif
     public sealed class ResultDescriptor
     {
         private static readonly object LockDescriptor = new object();
@@ -300,8 +297,14 @@ namespace SharpDX
             get { return formatMessageW ?? (formatMessageW = (FormatMessageWDelegate) Marshal.GetDelegateForFunctionPointer(new IntPtr(SharpDX.WP8.Interop.FormatMessageW()), typeof (FormatMessageWDelegate))); }
         }
 #else
+        #if W8CORE
+        [DllImport("api-ms-win-core-localization-l1-2-0.dll", EntryPoint = "FormatMessageW")]
+        private static extern uint FormatMessageW(int dwFlags, IntPtr lpSource, int dwMessageId, int dwLanguageId, ref IntPtr lpBuffer, int nSize, IntPtr Arguments);
+        #else
         [DllImport("kernel32.dll", EntryPoint = "FormatMessageW")]
         private static extern uint FormatMessageW(int dwFlags, IntPtr lpSource, int dwMessageId, int dwLanguageId, ref IntPtr lpBuffer, int nSize, IntPtr Arguments);
+#endif
+
 #endif
 
     }

@@ -17,7 +17,10 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+
 #if !W8CORE
+using System;
+using System.Threading;
 using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
@@ -34,6 +37,13 @@ namespace SharpDX.Toolkit
     {
         private bool isMouseVisible;
         private bool isMouseCurrentlyHidden;
+
+        private object wpfBorderControl;
+
+        private ManualResetEvent renderingThreadForWpfCanRun;
+        private ManualResetEvent renderingThreadForWpfHwndHostReady;
+        private IntPtr windowHandle;
+
 
         private RenderForm gameForm;
         private RenderLoop renderLoop;
@@ -135,22 +145,93 @@ namespace SharpDX.Toolkit
         /// <returns>true</returns>
         internal override bool IsBlockingRun { get { return true; } }
 
+        private bool isFullScreenMaximized;
+        private FormBorderStyle savedFormBorderStyle;
+        private FormWindowState savedWindowState;
+        private System.Drawing.Rectangle savedBounds;
+        private System.Drawing.Size oldClientSize;
+        private System.Drawing.Rectangle savedRestoreBounds;
+        private bool oldVisible;
+        private bool deviceChangeChangedVisible;
+        private bool? deviceChangeWillBeFullScreen;
+
         /// <inheritdoc />
         public override void BeginScreenDeviceChange(bool willBeFullScreen)
         {
+            if (gameForm != null)
+                oldClientSize = gameForm.ClientSize;
+            if (willBeFullScreen && !isFullScreenMaximized && gameForm != null)
+            {
+                savedFormBorderStyle = gameForm.FormBorderStyle;
+                savedWindowState = gameForm.WindowState;
+                savedBounds = gameForm.Bounds;
+                if (gameForm.WindowState == FormWindowState.Maximized)
+                    savedRestoreBounds = gameForm.RestoreBounds;
+            }
+
+            if (willBeFullScreen != isFullScreenMaximized)
+            {
+                deviceChangeChangedVisible = true;
+                oldVisible = Visible;
+                Visible = false;
+
+                if (gameForm != null)
+                    gameForm.SendToBack();
+            }
+            else
+            {
+                deviceChangeChangedVisible = false;
+            }
+
+            if (!willBeFullScreen && isFullScreenMaximized && gameForm != null)
+            {
+                gameForm.TopMost = false;
+                gameForm.FormBorderStyle = savedFormBorderStyle;
+            }
+
+            deviceChangeWillBeFullScreen = willBeFullScreen;
         }
 
         /// <inheritdoc />
         public override void EndScreenDeviceChange(int clientWidth, int clientHeight)
         {
+            if (!deviceChangeWillBeFullScreen.HasValue)
+                return;
+
+            if (deviceChangeWillBeFullScreen.Value)
+            {
+                if (!isFullScreenMaximized && gameForm != null)
+                {
+                    gameForm.TopMost = true;
+                    gameForm.FormBorderStyle = FormBorderStyle.None;
+                    gameForm.WindowState = FormWindowState.Normal;
+                    gameForm.BringToFront();
+                }
+                isFullScreenMaximized = true;
+            }
+            else if (isFullScreenMaximized)
+            {
+                if (gameForm != null)
+                    gameForm.BringToFront();
+                isFullScreenMaximized = false;
+            }
+
+            if (deviceChangeChangedVisible)
+                Visible = oldVisible;
+
             if (gameForm != null)
+            {
                 gameForm.ClientSize = new Size(clientWidth, clientHeight);
+                gameForm.IsFullscreen = deviceChangeWillBeFullScreen.Value;
+            }
+
+            deviceChangeWillBeFullScreen = null;
         }
 
         /// <inheritdoc />
         internal override bool CanHandle(GameContext gameContext)
         {
-            return gameContext.ContextType == GameContextType.Desktop;
+            return gameContext.ContextType == GameContextType.Desktop || gameContext.ContextType == GameContextType.DesktopHwndWpf;
         }
 
         /// <inheritdoc />
@@ -158,16 +239,42 @@ namespace SharpDX.Toolkit
         {
             GameContext = gameContext;
 
-            Control = (Control)gameContext.Control;
+            if (gameContext.ContextType == GameContextType.Desktop)
+            {
+                Control = (Control)gameContext.Control;
+                InitializeFromWinForm();
+            }
+            else if (gameContext.ContextType == GameContextType.DesktopHwndWpf)
+            {
+                InitializeFromWpfControl(gameContext.Control);
+            }
+        }
 
+        private void InitializeFromWpfControl(object wpfControl)
+        {
+#if NET35Plus
+            wpfBorderControl = (System.Windows.Controls.Border)wpfControl;
+            renderingThreadForWpfCanRun = new ManualResetEvent(false);
+            renderingThreadForWpfHwndHostReady = new ManualResetEvent(false);
+
+            // Start a new rendering thread for the WinForm part
+            var thread = new Thread(RunWpfRenderLoop) { IsBackground = true };
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+#endif
+        }
+
+        /// <inheritdoc />
+        private void InitializeFromWinForm()
+        {
             // Setup the initial size of the window
-            var width = gameContext.RequestedWidth;
+            var width = GameContext.RequestedWidth;
             if (width == 0)
             {
                 width = Control is Form ? GraphicsDeviceManager.DefaultBackBufferWidth : Control.ClientSize.Width;
             }
 
-            var height = gameContext.RequestedHeight;
+            var height = GameContext.RequestedHeight;
             if (height == 0)
             {
                 height = Control is Form ? GraphicsDeviceManager.DefaultBackBufferHeight : Control.ClientSize.Height;
@@ -194,6 +301,51 @@ namespace SharpDX.Toolkit
         /// <inheritdoc />
         internal override void Run()
         {
+#if NET35Plus
+            if (wpfBorderControl != null)
+            {
+                StartWpfRenderLoop();
+            }
+            else
+#endif
+            {
+                RunRenderLoop();
+            }
+        }
+
+#if NET35Plus
+        private void StartWpfRenderLoop()
+        {
+            // Wait for HwndHost ready
+            renderingThreadForWpfHwndHostReady.WaitOne();
+
+            // Create the toolkit HwndHost
+            ((System.Windows.Controls.Border)wpfBorderControl).Child = new ToolkitHwndHost(windowHandle);
+
+            // WPF rendering is done through a separate host
+            renderingThreadForWpfCanRun.Set();
+        }
+
+        private void RunWpfRenderLoop()
+        {
+            // Allocation of the RenderForm should be done on the same thread
+            Control = new RenderForm("SharpDX") { TopLevel = false, Visible = false };
+            InitializeFromWinForm();
+
+            windowHandle = Control.Handle;
+
+            // Notifies that the control is ready
+            renderingThreadForWpfHwndHostReady.Set();
+
+            // Wait for actual run
+            renderingThreadForWpfCanRun.WaitOne();
+
+            RunRenderLoop();
+        }
+#endif
+
+        private void RunRenderLoop()
+        {
             Debug.Assert(InitCallback != null);
             Debug.Assert(RunCallback != null);
 
@@ -202,8 +354,11 @@ namespace SharpDX.Toolkit
             try
             {
                 // Use custom render loop
-                Control.Show();
-                using (renderLoop = new RenderLoop(Control) { UseApplicationDoEvents =  GameContext.UseApplicationDoEvents})
+                // Show the control for WinForm, let HwndHost show it for WPF
+                if (wpfBorderControl == null)
+                    Control.Show();
+
+                using (renderLoop = new RenderLoop(Control) { UseApplicationDoEvents = GameContext.UseApplicationDoEvents })
                 {
                     while (renderLoop.NextFrame())
                     {

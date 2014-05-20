@@ -31,15 +31,15 @@ namespace SharpDX.Toolkit
     /// <summary>
     /// The game.
     /// </summary>
-    public class Game : Component
+    public partial class Game : Component
     {
         #region Fields
 
+        protected readonly GameTime gameTime;
         private readonly List<IDrawable> currentlyDrawingGameSystems;
         private readonly List<IUpdateable> currentlyUpdatingGameSystems;
         private readonly List<IContentable> currentlyContentGameSystems;
         private readonly List<IDrawable> drawableGameSystems;
-        private readonly GameTime gameTime;
         private readonly List<IGameSystem> pendingGameSystems;
         private readonly List<IUpdateable> updateableGameSystems;
         private readonly List<IContentable> contentableGameSystems;
@@ -339,6 +339,16 @@ namespace SharpDX.Toolkit
             isFirstUpdateDone = true;
         }
 
+        public void Run(object control)
+        {
+            Run(new GameContext(control));
+        }
+
+        public void Switch(object control)
+        {
+            Switch(new GameContext(control));
+        }
+
         /// <summary>
         /// Call this method to initialize the game, begin running the game loop, and start processing events for the game.
         /// </summary>
@@ -463,6 +473,11 @@ namespace SharpDX.Toolkit
                 // If there is no need for update, then exit
                 if (updateCount == 0)
                 {
+                    // check if we can sleep the thread to free CPU resources
+                    var sleepTime = TargetElapsedTime - accumulatedElapsedGameTime;
+                    if (sleepTime > TimeSpan.Zero)
+                        Utilities.Sleep(sleepTime);
+
                     return;
                 }
 

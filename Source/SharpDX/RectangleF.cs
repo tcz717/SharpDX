@@ -19,6 +19,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using SharpDX.Serialization;
 
@@ -28,10 +29,6 @@ namespace SharpDX
     /// Define a RectangleF. This structure is slightly different from System.Drawing.RectangleF as it is
     /// internally storing Left,Top,Right,Bottom instead of Left,Top,Width,Height.
     /// </summary>
-#if !W8CORE
-
-    [Serializable]
-#endif
     [StructLayout(LayoutKind.Sequential)]
     public struct RectangleF : IEquatable<RectangleF>, IDataSerializable
     {
@@ -41,13 +38,30 @@ namespace SharpDX
         private float _bottom;
 
         /// <summary>
-        /// An empty rectangle
+        /// An empty rectangle.
         /// </summary>
         public static readonly RectangleF Empty;
+
+        /// <summary>
+        /// An infinite rectangle. See remarks.
+        /// </summary>
+        /// <remarks>
+        /// http://msdn.microsoft.com/en-us/library/windows/desktop/dd372261%28v=vs.85%29.aspx
+        /// Any properties that involve computations, like <see cref="Center"/>, <see cref="Width"/> or <see cref="Height"/>
+        /// may return incorrect results - <see cref="float.NaN"/>.
+        /// </remarks>
+        public static readonly RectangleF Infinite;
 
         static RectangleF()
         {
             Empty = new RectangleF();
+            Infinite = new RectangleF
+                       {
+                           Left = float.NegativeInfinity,
+                           Top = float.NegativeInfinity,
+                           Right = float.PositiveInfinity,
+                           Bottom = float.PositiveInfinity
+                       };
         }
 
         /// <summary>
@@ -432,9 +446,9 @@ namespace SharpDX
         /// <inheritdoc/>
         public bool Equals(RectangleF other)
         {
-            return MathUtil.NearEqual(other.Left,   Left)   &&
-                   MathUtil.NearEqual(other.Right,  Right)  &&
-                   MathUtil.NearEqual(other.Top,    Top)    &&
+            return MathUtil.NearEqual(other.Left, Left) &&
+                   MathUtil.NearEqual(other.Right, Right) &&
+                   MathUtil.NearEqual(other.Top, Top) &&
                    MathUtil.NearEqual(other.Bottom, Bottom);
         }
 
@@ -454,6 +468,11 @@ namespace SharpDX
                 result = (result * 397) ^ _bottom.GetHashCode();
                 return result;
             }
+        }
+
+        public override string ToString()
+        {
+            return string.Format(CultureInfo.InvariantCulture, "X:{0} Y:{1} Width:{2} Height:{3}", X, Y, Width, Height);
         }
 
         /// <summary>

@@ -33,13 +33,14 @@ namespace SharpDX.DXGI
         private static readonly bool[] typelessFormats = new bool[256];
 
         /// <summary>
-        /// Calculates the size of a <see cref="Format"/> in bytes.
+        /// Calculates the size of a <see cref="Format"/> in bytes. Can be 0 for compressed format (as they are less than 1 byte)
         /// </summary>
         /// <param name="format">The DXGI format.</param>
         /// <returns>size of in bytes</returns>
-        public static float SizeOfInBytes(Format format)
+        public static int SizeOfInBytes(Format format)
         {
-            return (float) SizeOfInBits(format)/8;
+            var sizeInBits = SizeOfInBits(format);
+            return sizeInBits >> 3;
         }
 
         /// <summary>
@@ -356,15 +357,11 @@ namespace SharpDX.DXGI
                                  Format.R16G16B16A16_Typeless,
                                  Format.R32G32_Typeless,
                                  Format.R32G8X24_Typeless,
-                                 Format.R32_Float_X8X24_Typeless,
-                                 Format.X32_Typeless_G8X24_UInt,
                                  Format.R10G10B10A2_Typeless,
                                  Format.R8G8B8A8_Typeless,
                                  Format.R16G16_Typeless,
                                  Format.R32_Typeless,
                                  Format.R24G8_Typeless,
-                                 Format.R24_UNorm_X8_Typeless,
-                                 Format.X24_Typeless_G8_UInt,
                                  Format.R8G8_Typeless,
                                  Format.R16_Typeless,
                                  Format.R8_Typeless,

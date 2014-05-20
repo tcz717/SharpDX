@@ -31,12 +31,12 @@ namespace SharpDX.Toolkit.Graphics
         /// <summary>
         /// The index buffer used by this geometric primitive.
         /// </summary>
-        private readonly Buffer indexBuffer;
+        public Buffer IndexBuffer { get; private set; }
 
         /// <summary>
         /// The vertex buffer used by this geometric primitive.
         /// </summary>
-        private readonly Buffer<T> vertexBuffer;
+        public Buffer<T> VertexBuffer { get; private set; }
 
         /// <summary>
         /// The default graphics device.
@@ -51,7 +51,7 @@ namespace SharpDX.Toolkit.Graphics
         /// <summary>
         /// True if the index buffer is a 32 bit index buffer.
         /// </summary>
-        private readonly bool isIndex32Bits;
+        public bool IsIndex32Bits { get; private set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="GeometricPrimitive" /> class.
@@ -73,8 +73,8 @@ namespace SharpDX.Toolkit.Graphics
             if (toLeftHanded)
                 ReverseWinding(vertices, indices);
 
-            indexBuffer = ToDispose(Buffer.Index.New(graphicsDevice, indices));
-            vertexBuffer = ToDispose(Buffer.Vertex.New(graphicsDevice, vertices));
+            IndexBuffer = ToDispose(Buffer.Index.New(graphicsDevice, indices));
+            VertexBuffer = ToDispose(Buffer.Vertex.New(graphicsDevice, vertices));
         }
 
         /// <summary>
@@ -99,7 +99,7 @@ namespace SharpDX.Toolkit.Graphics
                 {
                     indicesShort[i] = (ushort)indices[i];
                 }
-                indexBuffer = ToDispose(Buffer.Index.New(graphicsDevice, indicesShort));
+                IndexBuffer = ToDispose(Buffer.Index.New(graphicsDevice, indicesShort));
             }
             else
             {
@@ -108,11 +108,11 @@ namespace SharpDX.Toolkit.Graphics
                     throw new InvalidOperationException("Cannot generate more than 65535 indices on feature level HW <= 9.3");
                 }
 
-                indexBuffer = ToDispose(Buffer.Index.New(graphicsDevice, indices));
-                isIndex32Bits = true;
+                IndexBuffer = ToDispose(Buffer.Index.New(graphicsDevice, indices));
+                IsIndex32Bits = true;
             }
 
-            vertexBuffer = ToDispose(Buffer.Vertex.New(graphicsDevice, vertices));
+            VertexBuffer = ToDispose(Buffer.Vertex.New(graphicsDevice, vertices));
         }
 
         /// <summary>
@@ -153,7 +153,8 @@ namespace SharpDX.Toolkit.Graphics
         }
 
         /// <summary>
-        /// Draws this <see cref="GeometricPrimitive" /> using an optional specific pass
+        /// Draws this <see cref="GeometricPrimitive" /> using an optional specific pass, and
+        /// a <see cref="PrimitiveType"/> of TriangleList.
         /// </summary>
         /// <param name="graphicsDevice">The graphics device.</param>
         /// <param name="pass">The effect pass, null by default.</param>
@@ -162,20 +163,34 @@ namespace SharpDX.Toolkit.Graphics
         /// </remarks>
         public void Draw(GraphicsDevice graphicsDevice, EffectPass pass = null)
         {
+            Draw(graphicsDevice, PrimitiveType.TriangleList, pass);
+        }
+
+        /// <summary>
+        /// Draws this <see cref="GeometricPrimitive" /> using an optional specific pass
+        /// </summary>
+        /// <param name="graphicsDevice">The graphics device.</param>
+        /// <param name="primitiveType">The primitive type to use when drawing.</param>
+        /// <param name="pass">The effect pass, null by default.</param>
+        /// <remarks>If an effect pass is passed to this method, the effect pass will be applied before drawing the geometry. 
+        /// If no effect pass is passed, an <see cref="EffectPass"/> must have been applied previously.
+        /// </remarks>
+        public void Draw(GraphicsDevice graphicsDevice, PrimitiveType primitiveType, EffectPass pass)
+        {
             if (pass != null)
                 pass.Apply();
 
             // Setup the Vertex Buffer
-            graphicsDevice.SetVertexBuffer(0, vertexBuffer);
+            graphicsDevice.SetVertexBuffer(0, VertexBuffer);
 
             // Setup the Vertex Buffer Input layout
             graphicsDevice.SetVertexInputLayout(InputLayout);
 
             // Setup the index Buffer
-            graphicsDevice.SetIndexBuffer(indexBuffer, isIndex32Bits);
+            graphicsDevice.SetIndexBuffer(IndexBuffer, IsIndex32Bits);
 
             // Finally Draw this mesh
-            graphicsDevice.DrawIndexed(PrimitiveType.TriangleList, indexBuffer.ElementCount);
+            graphicsDevice.DrawIndexed(primitiveType, IndexBuffer.ElementCount);
         }
 
         /// <summary>

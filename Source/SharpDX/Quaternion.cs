@@ -43,7 +43,6 @@
 * THE SOFTWARE.
 */
 using System;
-using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using SharpDX.Serialization;
@@ -54,10 +53,6 @@ namespace SharpDX
     /// Represents a four dimensional mathematical quaternion.
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
-#if !W8CORE
-    [Serializable]
-    [TypeConverter(typeof(SharpDX.Design.QuaternionConverter))]
-#endif
     public struct Quaternion : IEquatable<Quaternion>, IFormattable, IDataSerializable
     {
         /// <summary>
@@ -232,7 +227,7 @@ namespace SharpDX
                 if (MathUtil.IsZero(length))
                     return Vector3.UnitX;
 
-                float inv = 1.0f / length;
+                float inv = 1.0f / (float)Math.Sqrt(length);
                 return new Vector3(X * inv, Y * inv, Z * inv);
             }
         }
@@ -432,11 +427,11 @@ namespace SharpDX
         }
 
         /// <summary>
-        /// Modulates a quaternion by another.
+        /// Multiplies a quaternion by another.
         /// </summary>
-        /// <param name="left">The first quaternion to modulate.</param>
-        /// <param name="right">The second quaternion to modulate.</param>
-        /// <param name="result">When the method completes, contains the modulated quaternion.</param>
+        /// <param name="left">The first quaternion to multiply.</param>
+        /// <param name="right">The second quaternion to multiply.</param>
+        /// <param name="result">When the method completes, contains the multiplied quaternion.</param>
         public static void Multiply(ref Quaternion left, ref Quaternion right, out Quaternion result)
         {
             float lx = left.X;
@@ -458,11 +453,11 @@ namespace SharpDX
         }
 
         /// <summary>
-        /// Modulates a quaternion by another.
+        /// Multiplies a quaternion by another.
         /// </summary>
-        /// <param name="left">The first quaternion to modulate.</param>
-        /// <param name="right">The second quaternion to modulate.</param>
-        /// <returns>The modulated quaternion.</returns>
+        /// <param name="left">The first quaternion to multiply.</param>
+        /// <param name="right">The second quaternion to multiply.</param>
+        /// <returns>The multiplied quaternion.</returns>
         public static Quaternion Multiply(Quaternion left, Quaternion right)
         {
             Quaternion result;
@@ -904,30 +899,23 @@ namespace SharpDX
         /// <param name="result">The newly created quaternion</param>
         public static void RotationLookAt(ref Vector3 forward, ref Vector3 up, ref Vector3 right, out Quaternion result)
         {
-            RotationLookAt(ref forward, ref up, ref right, true, out result);
-        }
-
-        /// <summary>
-        /// Creates a quaternion given forward and up vectors
-        /// </summary>
-        /// <param name="forward">The forward vector the quaternion should look at</param>
-        /// <param name="up">The up vector of the quaternion (must be perpendicular to forward vector)</param>
-        /// <param name="right">The right vector of the quaternion (must be perpendicular to forward vector)</param>
-        /// <param name="normalizeInput">Set true to normalize input parameters</param>
-        /// <param name="result">The newly created quaternion</param>
-        public static void RotationLookAt(ref Vector3 forward, ref Vector3 up, ref Vector3 right, bool normalizeInput, out Quaternion result)
-        {
-            if (normalizeInput)
-            {
-                forward.Normalize(); 
-                up.Normalize(); 
-                right.Normalize();
-            }
-            result.W = (float)Math.Sqrt(1 + right.X + up.Y + forward.Z) * .5f;
-            float reciprocal = 1.0f / (4.0f * result.W);
-            result.X = (up.Z - forward.Y) * reciprocal;
-            result.Y = (forward.X - right.Z) * reciprocal;
-            result.Z = (right.Y - up.X) * reciprocal;
+            //normalize input
+            forward.Normalize(); 
+            up.Normalize(); 
+            right.Normalize();
+            //fill the 3x3 matrix with the bases for the system
+            Matrix3x3 m;
+            m.M11 = right.X;
+            m.M12 = right.Y;
+            m.M13 = right.Z;
+            m.M21 = up.X;
+            m.M22 = up.Y;
+            m.M23 = up.Z;
+            m.M31 = forward.X;
+            m.M32 = forward.Y;
+            m.M33 = forward.Z;
+            //create new quaternion from matrix
+            RotationMatrix(ref m, out result);
         }
         
         /// <summary>
@@ -1013,14 +1001,11 @@ namespace SharpDX
             float lengthSq = difference.LengthSquared();
             if (MathUtil.IsZero(lengthSq))
                 difference = -cameraForwardVector;
-            else
-                difference *= (float)(1.0 / Math.Sqrt(lengthSq));
 
             Vector3.Cross(ref cameraUpVector, ref difference, out right);
-            right.Normalize();
             Vector3.Cross(ref difference, ref right, out up);
 
-            RotationLookAt(ref difference, ref up, ref right, false, out result);
+            RotationLookAt(ref difference, ref up, ref right, out result);
         }
         
         /// <summary>
@@ -1055,14 +1040,11 @@ namespace SharpDX
             float lengthSq = difference.LengthSquared();
             if (MathUtil.IsZero(lengthSq))
                 difference = cameraForwardVector;
-            else
-                difference *= (float)(1.0 / Math.Sqrt(lengthSq));
 
             Vector3.Cross(ref cameraUpVector, ref difference, out right);
-            right.Normalize();
             Vector3.Cross(ref difference, ref right, out up);
 
-            RotationLookAt(ref difference, ref up, ref right, false, out result);
+            RotationLookAt(ref difference, ref up, ref right, out result);
         }
 
         /// <summary>
@@ -1324,7 +1306,7 @@ namespace SharpDX
         /// <returns><c>true</c> if <paramref name="left"/> has the same value as <paramref name="right"/>; otherwise, <c>false</c>.</returns>
         public static bool operator ==(Quaternion left, Quaternion right)
         {
-            return left.Equals(right);
+            return left.Equals(ref right);
         }
 
         /// <summary>
@@ -1335,7 +1317,7 @@ namespace SharpDX
         /// <returns><c>true</c> if <paramref name="left"/> has a different value than <paramref name="right"/>; otherwise, <c>false</c>.</returns>
         public static bool operator !=(Quaternion left, Quaternion right)
         {
-            return !left.Equals(right);
+            return !left.Equals(ref right);
         }
 
         /// <summary>
@@ -1439,9 +1421,21 @@ namespace SharpDX
         /// <returns>
         /// <c>true</c> if the specified <see cref="SharpDX.Quaternion"/> is equal to this instance; otherwise, <c>false</c>.
         /// </returns>
-        public bool Equals(Quaternion other)
+        public bool Equals(ref Quaternion other)
         {
             return MathUtil.NearEqual(other.X, X) && MathUtil.NearEqual(other.Y, Y) && MathUtil.NearEqual(other.Z, Z) && MathUtil.NearEqual(other.W, W);
+        }
+
+        /// <summary>
+        /// Determines whether the specified <see cref="SharpDX.Quaternion"/> is equal to this instance.
+        /// </summary>
+        /// <param name="other">The <see cref="SharpDX.Quaternion"/> to compare with this instance.</param>
+        /// <returns>
+        /// <c>true</c> if the specified <see cref="SharpDX.Quaternion"/> is equal to this instance; otherwise, <c>false</c>.
+        /// </returns>
+        public bool Equals(Quaternion other)
+        {
+            return Equals(ref other);
         }
 
         /// <summary>
@@ -1453,13 +1447,11 @@ namespace SharpDX
         /// </returns>
         public override bool Equals(object value)
         {
-            if (value == null)
+            if (!(value is Quaternion))
                 return false;
 
-            if (!ReferenceEquals(value.GetType(), typeof(Quaternion)))
-                return false;
-
-            return Equals((Quaternion)value);
+            var strongValue = (Quaternion)value;
+            return Equals(ref strongValue);
         }
 
 #if SlimDX1xInterop

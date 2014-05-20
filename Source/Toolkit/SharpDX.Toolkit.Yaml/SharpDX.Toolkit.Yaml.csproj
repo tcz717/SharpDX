@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(SolutionDir)\SharpDX.PreSettings.targets" />
+  <Import Project="$(SolutionDir)\Build\SharpDX.PreSettings.targets" />
   <PropertyGroup>
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
@@ -50,12 +50,13 @@
     <None Include="SharpDX.Toolkit.Yaml.nuspec" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="SharpYaml, Version=1.1.0.42833, Culture=neutral, PublicKeyToken=1ced8108e942bc02, processorArchitecture=MSIL">
+    <Reference Include="SharpYaml, Version=1.2.0.13711, Culture=neutral, PublicKeyToken=1ced8108e942bc02, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\packages\SharpYaml.1.1.0\lib\SharpYaml.dll</HintPath>
+      <HintPath>..\..\..\packages\SharpYaml.1.2.0\lib\SharpYaml.dll</HintPath>
+      <Private>False</Private>
     </Reference>
   </ItemGroup>
-  <Import Project="$(SolutionDir)\SharpDX.PostSettings.targets" />
+  <Import Project="$(SolutionDir)\Build\SharpDX.PostSettings.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

@@ -139,10 +139,10 @@ namespace SharpDX.Windows
                     if (localHandle != IntPtr.Zero)
                     {
                         // Previous code not compatible with Application.AddMessageFilter but faster then DoEvents
-                        Win32Native.NativeMessage msg;
-                        while (Win32Native.PeekMessage(out msg, localHandle, 0, 0, 0) != 0)
+                        NativeMessage msg;
+                        while (Win32Native.PeekMessage(out msg, IntPtr.Zero, 0, 0, 0) != 0)
                         {
-                            if (Win32Native.GetMessage(out msg, localHandle, 0, 0) == -1)
+                            if (Win32Native.GetMessage(out msg, IntPtr.Zero, 0, 0) == -1)
                             {
                                 throw new InvalidOperationException(String.Format(CultureInfo.InvariantCulture,
                                     "An error happened in rendering loop while processing windows messages. Error: {0}",
@@ -229,7 +229,7 @@ namespace SharpDX.Windows
         {
             get
             {
-                Win32Native.NativeMessage msg;
+                NativeMessage msg;
                 return (bool)(Win32Native.PeekMessage(out msg, IntPtr.Zero, 0, 0, 0) == 0);
             }
         }

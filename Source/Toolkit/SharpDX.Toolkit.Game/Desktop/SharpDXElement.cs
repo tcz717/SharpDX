@@ -37,6 +37,7 @@ namespace SharpDX.Toolkit
         private readonly DeviceEx device9;
         private readonly DispatcherTimer resizeDelayTimer;
         private Texture texture;
+        private IntPtr textureSurfaceHandle;
 
         private bool isDisposed;
 
@@ -86,6 +87,7 @@ namespace SharpDX.Toolkit
         public SharpDXElement()
         {
             image = new D3DImage();
+            image.IsFrontBufferAvailableChanged += HandleIsFrontBufferAvailableChanged;
 
             var presentparams = new PresentParameters
                 {
@@ -107,6 +109,8 @@ namespace SharpDX.Toolkit
             resizeDelayTimer = new DispatcherTimer(DispatcherPriority.Normal);
             resizeDelayTimer.Interval = SendResizeDelay;
             resizeDelayTimer.Tick += HandleResizeDelayTimerTick;
+
+            Focusable = true;
 
             SizeChanged += HandleSizeChanged;
             Unloaded += HandleUnloaded;
@@ -176,7 +180,7 @@ namespace SharpDX.Toolkit
         /// <returns>An <see cref="GameContextWpf"/> instance derived from <see cref="GameContext"/>.</returns>
         public static implicit operator GameContext(SharpDXElement element)
         {
-            return new GameContextWpf(element);
+            return new GameContext(element);
         }
 
         internal event EventHandler ResizeCompleted;
@@ -205,7 +209,10 @@ namespace SharpDX.Toolkit
             }
 
             using (var surface = texture.GetSurfaceLevel(0))
-                TrySetBackbufferPointer(surface.NativePointer);
+            {
+                textureSurfaceHandle = surface.NativePointer;
+                TrySetBackbufferPointer(textureSurfaceHandle);
+            }
         }
 
         /// <summary>
@@ -250,6 +257,12 @@ namespace SharpDX.Toolkit
         {
             if (isDisposed)
                 throw new ObjectDisposedException("SharpDXElement", "The element is disposed - either explicitly or via Unloaded event, it cannot be reused.");
+        }
+
+        private void HandleIsFrontBufferAvailableChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (image.IsFrontBufferAvailable)
+                TrySetBackbufferPointer(textureSurfaceHandle);
         }
 
         private void HandleUnloaded(object sender, RoutedEventArgs e)

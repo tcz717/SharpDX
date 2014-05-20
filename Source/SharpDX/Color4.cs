@@ -45,7 +45,6 @@
 using System;
 using System.Globalization;
 using System.Runtime.InteropServices;
-using System.ComponentModel;
 using SharpDX.Serialization;
 
 namespace SharpDX
@@ -53,10 +52,6 @@ namespace SharpDX
     /// <summary>
     /// Represents a color in the form of rgba.
     /// </summary>
-#if !W8CORE
-    [Serializable]
-    [TypeConverter(typeof(SharpDX.Design.Color4Converter))]
-#endif
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
     [DynamicSerializer("TKC4")]
     public struct Color4 : IEquatable<Color4>, IFormattable, IDataSerializable
@@ -663,6 +658,31 @@ namespace SharpDX
                 grey + saturation * (value.Green - grey),
                 grey + saturation * (value.Blue - grey),
                 value.Alpha);
+        }
+
+        /// <summary>
+        /// Computes the premultiplied value of the provided color.
+        /// </summary>
+        /// <param name="value">The non-premultiplied value.</param>
+        /// <param name="result">The premultiplied result.</param>
+        public static void Premultiply(ref Color4 value, out Color4 result)
+        {
+            result.Alpha = value.Alpha;
+            result.Red = value.Red * value.Alpha;
+            result.Green = value.Green * value.Alpha;
+            result.Blue = value.Blue * value.Alpha;
+        }
+
+        /// <summary>
+        /// Computes the premultiplied value of the provided color.
+        /// </summary>
+        /// <param name="value">The non-premultiplied value.</param>
+        /// <returns>The premultiplied result.</returns>
+        public static Color4 Premultiply(Color4 value)
+        {
+            Color4 result;
+            Premultiply(ref value, out result);
+            return result;
         }
 
         /// <summary>
